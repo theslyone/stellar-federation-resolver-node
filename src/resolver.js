@@ -9,15 +9,15 @@ class FederationResolver {
         this.config = config
     }
 
-    resolveByName(params) {
+    resolveByName(req, params) {
         return this.retrieveSearchParameters(params)
             .then(searchParams => {
                 if (!searchParams) return responseBuilder.notFound()
-                return this.invokeResolverRequest('Name', searchParams)
+                return this.invokeResolverRequest(req, 'Name', searchParams)
             })
     }
 
-    resolveById(params) {
+    resolveById(req, params) {
         return this.retrieveSearchParameters(params)
             .then(searchParams => {
                 if (!searchParams) {
@@ -26,7 +26,7 @@ class FederationResolver {
                 if (!searchParams.query || !stellarBase.StrKey.isValidEd25519PublicKey(searchParams.query)) {
                     return responseBuilder.invalidParam('q', `Invalid Stellar account id: ${searchParams.query}.`)
                 }
-                return this.invokeResolverRequest('Id', searchParams)
+                return this.invokeResolverRequest(req, 'Id', searchParams)
             })
     }
 
@@ -43,17 +43,17 @@ class FederationResolver {
                     .transaction(searchParams.query)
                     .call()
                     .then(transactionResult => {
-                        return this.resolveById({q: transactionResult.account})
+                        return this.resolveById({ q: transactionResult.account })
                     })
             })
     }
 
-    resolveByForward(params) {
-        return this.invokeResolverRequest('Forward', params)
+    resolveByForward(req, params) {
+        return this.invokeResolverRequest(req, 'Forward', params)
     }
 
     isDomainAllowed(domainName) {
-        return this.config.domains === null || (typeof(domainName) === 'string' && this.config.domains.indexOf(domainName.toLowerCase()) >= 0)
+        return this.config.domains === null || (typeof (domainName) === 'string' && this.config.domains.indexOf(domainName.toLowerCase()) >= 0)
     }
 
     retrieveSearchParameters(params) {
@@ -80,7 +80,7 @@ class FederationResolver {
         })
     }
 
-    invokeResolverRequest(resolverType, data) {
+    invokeResolverRequest(req, resolverType, data) {
         const resolverMethod = this.config.getResolverCallback(resolverType)
         return new Promise((resolve, reject) => {
             if (!resolverMethod) return responseBuilder.forbiddenRequestType(resolverType).catch(err => reject(err))
@@ -91,7 +91,7 @@ class FederationResolver {
             }
 
             //invoke resolver method
-            let res = resolverMethod(data, cb)
+            let res = resolverMethod(req, data, cb)
 
             //check if execution result is a promise
             if (typeof res.then === 'function') return res.then(record => resolve(record)).catch(err => reject(err))
